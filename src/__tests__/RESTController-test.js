@@ -9,7 +9,7 @@
 
 jest.autoMockOff();
 jest.useFakeTimers();
-jest.mock('uuid/v4', () => {
+jest.mock('../uuid', () => {
   let value = 1000;
   return () => (value++).toString();
 });
@@ -239,6 +239,29 @@ describe('RESTController', () => {
     };
     RESTController._setXHR(XHR);
     const response = await RESTController.request('GET', 'classes/MyObject', {}, {});
+    expect(response).toBe(1234);
+  });
+
+  it('handles x-parse-push-status-id header', async () => {
+    const XHR = function () {};
+    XHR.prototype = {
+      open: function () {},
+      setRequestHeader: function () {},
+      getResponseHeader: function () {
+        return 1234;
+      },
+      send: function () {
+        this.status = 200;
+        this.responseText = '{}';
+        this.readyState = 4;
+        this.onreadystatechange();
+      },
+      getAllResponseHeaders: function () {
+        return 'x-parse-push-status-id: 1234';
+      },
+    };
+    RESTController._setXHR(XHR);
+    const response = await RESTController.request('POST', 'push', {}, {});
     expect(response).toBe(1234);
   });
 

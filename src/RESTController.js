@@ -9,7 +9,7 @@
  * @flow
  */
 /* global XMLHttpRequest, XDomainRequest */
-const uuidv4 = require('uuid/v4');
+const uuidv4 = require('./uuid');
 
 import CoreManager from './CoreManager';
 import ParseError from './ParseError';
@@ -121,6 +121,9 @@ const RESTController = {
             if (typeof xhr.getResponseHeader === 'function') {
               if ((xhr.getAllResponseHeaders() || '').includes('x-parse-job-status-id: ')) {
                 response = xhr.getResponseHeader('x-parse-job-status-id');
+              }
+              if ((xhr.getAllResponseHeaders() || '').includes('x-parse-push-status-id: ')) {
+                response = xhr.getResponseHeader('x-parse-push-status-id');
               }
             }
           } catch (e) {

@@ -2727,6 +2727,12 @@ function runTest(controller) {
       q.fromLocalDatastore();
       objects = await q.find();
       assert.equal(objects.length, 1);
+
+      q = new Parse.Query(TestObject);
+      q.lessThanOrEqualTo('dateField', { $relativeTime: 'in 0 day' });
+      q.fromLocalDatastore();
+      objects = await q.find();
+      assert.equal(objects.length, 1);
     });
 
     it(`${controller.name} supports withinPolygon`, async () => {
@@ -2856,6 +2862,8 @@ function runTest(controller) {
 
       localDatastore = await Parse.LocalDatastore._getAllContents();
       expect(localDatastore[LDS_KEY(testClassB)][0].classA.objectId).toEqual(testClassA.id);
+      Parse.Object.unregisterSubclass('ClassA');
+      Parse.Object.unregisterSubclass('ClassB');
     });
   });
 }

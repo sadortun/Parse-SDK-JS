@@ -161,6 +161,25 @@ describe('Parse module', () => {
     CoreManager.set('REQUEST_BATCH_SIZE', 20);
   });
 
+  it('can set allowCustomObjectId', () => {
+    expect(Parse.allowCustomObjectId).toBe(false);
+    Parse.allowCustomObjectId = true;
+    expect(CoreManager.get('ALLOW_CUSTOM_OBJECT_ID')).toBe(true);
+    Parse.allowCustomObjectId = false;
+  });
+
+  it('getServerHealth', () => {
+    const controller = {
+      request: jest.fn(),
+      ajax: jest.fn(),
+    };
+    CoreManager.setRESTController(controller);
+    Parse.getServerHealth();
+    const [method, path] = controller.request.mock.calls[0];
+    expect(method).toBe('GET');
+    expect(path).toBe('health');
+  });
+
   it('_request', () => {
     const controller = {
       request: jest.fn(),

@@ -33,7 +33,7 @@ jest.dontMock('../unsavedChildren');
 jest.dontMock('../ParseACL');
 jest.dontMock('../LocalDatastore');
 
-jest.mock('uuid/v4', () => {
+jest.mock('../uuid', () => {
   let value = 0;
   return () => value++;
 });
@@ -697,16 +697,6 @@ describe('ParseObject', () => {
     });
     expect(o.get('objectField').number).toEqual(6);
     expect(o.get('objectField').letter).toEqual('a');
-  });
-
-  it('ignore set nested field on new object', () => {
-    const o = new ParseObject('Person');
-    o.set('objectField.number', 20);
-
-    expect(o.attributes).toEqual({});
-    expect(o.op('objectField.number') instanceof SetOp).toBe(false);
-    expect(o.dirtyKeys()).toEqual([]);
-    expect(o._getSaveJSON()).toEqual({});
   });
 
   it('can add elements to an array field', () => {
@@ -3434,6 +3424,42 @@ describe('ParseObject Subclasses', () => {
     }).toThrow(
       'You must register the subclass constructor. Did you attempt to register an instance of the subclass?'
     );
+
+    expect(() => {
+      ParseObject.unregisterSubclass(1234);
+    }).toThrow('The first argument must be a valid class name.');
+  });
+
+  it('can use on ParseObject subclass for multiple Parse.Object class names', () => {
+    class MyParseObjects extends ParseObject {
+      constructor(className) {
+        super(className);
+      }
+    }
+    ParseObject.registerSubclass('TestObject', MyParseObjects);
+    ParseObject.registerSubclass('TestObject1', MyParseObjects);
+    ParseObject.registerSubclass('TestObject2', MyParseObjects);
+
+    const obj = new MyParseObjects('TestObject');
+    expect(obj.className).toBe('TestObject');
+    const obj1 = new MyParseObjects('TestObject1');
+    expect(obj1.className).toBe('TestObject1');
+    const obj2 = new MyParseObjects('TestObject2');
+    expect(obj2.className).toBe('TestObject2');
+
+    let classMap = ParseObject._getClassMap();
+    expect(classMap.TestObject).toEqual(MyParseObjects);
+    expect(classMap.TestObject1).toEqual(MyParseObjects);
+    expect(classMap.TestObject2).toEqual(MyParseObjects);
+
+    ParseObject.unregisterSubclass('TestObject');
+    ParseObject.unregisterSubclass('TestObject1');
+    ParseObject.unregisterSubclass('TestObject2');
+
+    classMap = ParseObject._getClassMap();
+    expect(classMap.TestObject).toBeUndefined();
+    expect(classMap.TestObject1).toBeUndefined();
+    expect(classMap.TestObject2).toBeUndefined();
   });
 
   it('can inflate subclasses from server JSON', () => {
@@ -3779,5 +3805,41 @@ describe('ParseObject pin', () => {
       expect(obj.id).toBe('P5');
       done();
     });
+  });
+
+  it('can allowCustomObjectId', async done => {
+    CoreManager.set('ALLOW_CUSTOM_OBJECT_ID', true);
+    const o = new ParseObject('Person');
+    let params = o._getSaveParams();
+    expect(params).toEqual({
+      method: 'POST',
+      body: { objectId: undefined },
+      path: 'classes/Person',
+    });
+    try {
+      await o.save();
+      done.fail();
+    } catch (error) {
+      expect(error.message).toBe('objectId must not be empty, null or undefined');
+    }
+    try {
+      await ParseObject.saveAll([o]);
+      done.fail();
+    } catch (error) {
+      expect(error.message).toBe('objectId must not be empty, null or undefined');
+    }
+    o._finishFetch({
+      objectId: 'CUSTOM_ID',
+      createdAt: { __type: 'Date', iso: new Date().toISOString() },
+      updatedAt: { __type: 'Date', iso: new Date().toISOString() },
+    });
+    params = o._getSaveParams();
+    expect(params).toEqual({
+      method: 'PUT',
+      body: {},
+      path: 'classes/Person/CUSTOM_ID',
+    });
+    CoreManager.set('ALLOW_CUSTOM_OBJECT_ID', false);
+    done();
   });
 });

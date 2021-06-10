@@ -43,7 +43,7 @@ import unsavedChildren from './unsavedChildren';
 import type { AttributeMap, OpsMap } from './ObjectStateMutations';
 import type { RequestOptions, FullOptions } from './RESTController';
 
-const uuidv4 = require('uuid/v4');
+const uuidv4 = require('./uuid');
 
 export type Pointer = {
   __type: string,
@@ -324,10 +324,18 @@ class ParseObject {
   }
 
   _getSaveParams(): SaveParams {
-    const method = this.id ? 'PUT' : 'POST';
+    let method = this.id ? 'PUT' : 'POST';
     const body = this._getSaveJSON();
     let path = 'classes/' + this.className;
-    if (this.id) {
+    if (CoreManager.get('ALLOW_CUSTOM_OBJECT_ID')) {
+      if (!this.createdAt) {
+        method = 'POST';
+        body.objectId = this.id;
+      } else {
+        method = 'PUT';
+        path += '/' + this.id;
+      }
+    } else if (this.id) {
       path += '/' + this.id;
     } else if (this.className === '_User') {
       path = 'users';
@@ -401,7 +409,7 @@ class ParseObject {
     for (attr in pending) {
       if (pending[attr] instanceof RelationOp) {
         changes[attr] = pending[attr].applyTo(undefined, this, attr);
-      } else if (!(attr in response) && !attr.includes('.')) {
+      } else if (!(attr in response)) {
         // Only SetOps and UnsetOps should not come back with results
         changes[attr] = pending[attr].applyTo(undefined);
       }
@@ -439,6 +447,10 @@ class ParseObject {
   _handleSaveError() {
     const stateController = CoreManager.getObjectStateController();
     stateController.mergeFirstPendingState(this._getStateIdentifier());
+  }
+
+  static _getClassMap() {
+    return classMap;
   }
 
   /** Public methods **/
@@ -741,15 +753,6 @@ class ParseObject {
 
     const currentAttributes = this.attributes;
 
-    // Only set nested fields if exists
-    const serverData = this._getServerData();
-    if (typeof key === 'string' && key.includes('.')) {
-      const field = key.split('.')[0];
-      if (!serverData[field]) {
-        return this;
-      }
-    }
-
     // Calculate new values
     const newValues = {};
     for (const attr in newOps) {
@@ -931,10 +934,7 @@ class ParseObject {
    * @returns {Parse.Object}
    */
   clone(): any {
-    const clone = new this.constructor();
-    if (!clone.className) {
-      clone.className = this.className;
-    }
+    const clone = new this.constructor(this.className);
     let attributes = this.attributes;
     if (typeof this.constructor.readOnlyAttributes === 'function') {
       const readonly = this.constructor.readOnlyAttributes() || [];
@@ -960,10 +960,7 @@ class ParseObject {
    * @returns {Parse.Object}
    */
   newInstance(): any {
-    const clone = new this.constructor();
-    if (!clone.className) {
-      clone.className = this.className;
-    }
+    const clone = new this.constructor(this.className);
     clone.id = this.id;
     if (singleInstance) {
       // Just return an object with the right id
@@ -1249,9 +1246,11 @@ class ParseObject {
    * or<pre>
    * object.save(attrs, options);</pre>
    * or<pre>
+   * object.save(key, value);</pre>
+   * or<pre>
    * object.save(key, value, options);</pre>
    *
-   * For example, <pre>
+   * Example 1: <pre>
    * gameTurn.save({
    * player: "Jake Cutter",
    * diceRoll: 2
@@ -1260,6 +1259,9 @@ class ParseObject {
    * }, function(error) {
    * // The save failed.  Error is an instance of Parse.Error.
    * });</pre>
+   *
+   * Example 2: <pre>
+   * gameTurn.save("player", "Jake Cutter");</pre>
    *
    * @param {string | object | null} [arg1]
    * Valid options are:<ul>
@@ -1832,7 +1834,7 @@ class ParseObject {
       throw new Error('Cannot create an object without a className');
     }
     const constructor = classMap[json.className];
-    const o = constructor ? new constructor() : new ParseObject(json.className);
+    const o = constructor ? new constructor(json.className) : new ParseObject(json.className);
     const otherAttributes = {};
     for (const attr in json) {
       if (attr !== 'className' && attr !== '__type') {
@@ -1889,6 +1891,18 @@ class ParseObject {
     if (!constructor.className) {
       constructor.className = className;
     }
+  }
+
+  /**
+   * Unegisters a subclass of Parse.Object with a specific class name.
+   *
+   * @param {string} className The class name of the subclass
+   */
+  static unregisterSubclass(className: string) {
+    if (typeof className !== 'string') {
+      throw new TypeError('The first argument must be a valid class name.');
+    }
+    delete classMap[className];
   }
 
   /**
@@ -2362,6 +2376,7 @@ const DefaultController = {
 
     const RESTController = CoreManager.getRESTController();
     const stateController = CoreManager.getObjectStateController();
+    const allowCustomObjectId = CoreManager.get('ALLOW_CUSTOM_OBJECT_ID');
 
     options = options || {};
     options.returnStatus = options.returnStatus || true;
@@ -2384,6 +2399,12 @@ const DefaultController = {
         if (el instanceof ParseFile) {
           filesSaved.push(el.save(options));
         } else if (el instanceof ParseObject) {
+          if (allowCustomObjectId && !el.id) {
+            throw new ParseError(
+              ParseError.MISSING_OBJECT_ID,
+              'objectId must not be empty, null or undefined'
+            );
+          }
           pending.push(el);
         }
       });
@@ -2477,6 +2498,12 @@ const DefaultController = {
         });
       });
     } else if (target instanceof ParseObject) {
+      if (allowCustomObjectId && !target.id) {
+        throw new ParseError(
+          ParseError.MISSING_OBJECT_ID,
+          'objectId must not be empty, null or undefined'
+        );
+      }
       // generate _localId in case if cascadeSave=false
       target._getId();
       const localId = target._localId;

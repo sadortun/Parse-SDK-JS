@@ -1,7 +1,47 @@
 # Parse-SDK-JS
 
 ### master
-[Full Changelog](https://github.com/parse-community/Parse-SDK-JS/compare/3.0.0...master)
+[Full Changelog](https://github.com/parse-community/Parse-SDK-JS/compare/3.2.0...master)
+
+## 3.2.0
+[Full Changelog](https://github.com/parse-community/Parse-SDK-JS/compare/3.1.0...3.2.0)
+
+**Breaking Changes**
+- Remove deletion of Anonymous User on logout ([#1324](https://github.com/parse-community/Parse-SDK-JS/pull/1324))
+See https://community.parseplatform.org/t/anonymous-user-destroyed-on-logout/1425
+
+**Improvements**
+- Allow multiple classNames for `Parse.Object.registerSubclass` ([#1315](https://github.com/parse-community/Parse-SDK-JS/pull/1315))
+```
+const classNames = ['ClassOne', 'ClassTwo', 'ClassThree'];
+for (const className of classNames) {
+  Parse.Object.registerSubclass(className, CustomClass);
+}
+```
+
+**Fixes**
+- Fixes build for WeChat WeApp, to reduce package size, see [issue/#1331](https://github.com/parse-community/Parse-SDK-JS/issues/1331)
+
+## 3.1.0
+[Full Changelog](https://github.com/parse-community/Parse-SDK-JS/compare/3.0.0...3.1.0)
+
+**Breaking Changes**
+`Parse.Push.send` will now return the pushStatusId instead of `{ result: true }`
+
+**Features**
+- Add Server Health Check `Parse.getServerHealth()` ([#1307](https://github.com/parse-community/Parse-SDK-JS/pull/1307))
+- Allow saving with custom objectId `Parse.allowCustomObjectId = true` ([#1309](https://github.com/parse-community/Parse-SDK-JS/pull/1309))
+- `Parse.Push.send` now returns pushStatusId ([#1302](https://github.com/parse-community/Parse-SDK-JS/pull/1302))
+- Add `Parse.Push.getPushStatus` ([#1302](https://github.com/parse-community/Parse-SDK-JS/pull/1302))
+
+**Improvements**
+- Add modifiers to `query.startsWith` ([#1306](https://github.com/parse-community/Parse-SDK-JS/pull/1306))
+- Add modifiers to `query.endsWith` ([#1306](https://github.com/parse-community/Parse-SDK-JS/pull/1306))
+
+**Fixes**
+- EventuallyQueue now polls against `/health` endpoint, caused 403 forbidden side effect ([#1305](https://github.com/parse-community/Parse-SDK-JS/pull/1305))
+- Allow nested increment on undefined fields ([#1303](https://github.com/parse-community/Parse-SDK-JS/pull/1303))
+- Handle increment on nested fields any level deep ([#1301](https://github.com/parse-community/Parse-SDK-JS/pull/1301))
 
 ## 3.0.0
 [Full Changelog](https://github.com/parse-community/Parse-SDK-JS/compare/2.19.0...3.0.0)

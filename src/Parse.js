@@ -81,6 +81,16 @@ const Parse = {
   },
 
   /**
+   * Returns information regarding the current server's health
+   *
+   * @returns {Promise}
+   * @static
+   */
+  getServerHealth() {
+    return CoreManager.getRESTController().request('GET', 'health');
+  },
+
+  /**
    * @member {string} Parse.applicationId
    * @static
    */
@@ -188,6 +198,17 @@ const Parse = {
   },
   get idempotency() {
     return CoreManager.get('IDEMPOTENCY');
+  },
+
+  /**
+   * @member {boolean} Parse.allowCustomObjectId
+   * @static
+   */
+  set allowCustomObjectId(value) {
+    CoreManager.set('ALLOW_CUSTOM_OBJECT_ID', value);
+  },
+  get allowCustomObjectId() {
+    return CoreManager.get('ALLOW_CUSTOM_OBJECT_ID');
   },
 };
 

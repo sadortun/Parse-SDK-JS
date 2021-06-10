@@ -11,7 +11,7 @@
 
 import ParseUser from './ParseUser';
 import type { RequestOptions } from './RESTController';
-const uuidv4 = require('uuid/v4');
+const uuidv4 = require('./uuid');
 
 let registered = false;
 
@@ -87,6 +87,18 @@ const AnonymousUtils = {
   link(user: ParseUser, options?: RequestOptions): Promise<ParseUser> {
     const provider = this._getAuthProvider();
     return user.linkWith(provider.getAuthType(), provider.getAuthData(), options);
+  },
+
+  /**
+   * Returns true if Authentication Provider has been registered for use.
+   *
+   * @function isRegistered
+   * @name Parse.AnonymousUtils.isRegistered
+   * @returns {boolean}
+   * @static
+   */
+  isRegistered(): boolean {
+    return registered;
   },
 
   _getAuthProvider() {
